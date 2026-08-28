@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IAM Policy Verifier — Dashboard</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #0f1117; color: #e4e4e7; }
+        h1 { font-size: 1.5rem; }
+        .toolbar { margin-bottom: 1.5rem; }
+        button { background: #2563eb; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
+        button:hover { background: #1d4ed8; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+        th, td { text-align: left; padding: 0.6rem; border-bottom: 1px solid #27272a; font-size: 0.9rem; }
+        th { color: #a1a1aa; text-transform: uppercase; font-size: 0.75rem; }
+        .badge { padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+        .CRITICAL { background: #7f1d1d; color: #fecaca; }
+        .HIGH { background: #78350f; color: #fed7aa; }
+        .MEDIUM { background: #1e3a8a; color: #bfdbfe; }
+        .LOW { background: #3f3f46; color: #d4d4d8; }
+        .loading { color: #71717a; }
+    </style>
+</head>
+<body>
+    <h1>IAM Policy Verifier</h1>
+    <div class="toolbar">
+        <button onclick="refreshScan()">Run New Scan</button>
+    </div>
+
+    <h2>Policy Findings</h2>
+    <table id="rule-findings-table">
+        <thead>
+            <tr><th>Severity</th><th>Rule</th><th>Policy</th><th>Message</th></tr>
+        </thead>
+        <tbody><tr><td colspan="4" class="loading">Loading...</td></tr></tbody>
+    </table>
+
+    <h2>Privilege Escalation Findings</h2>
+    <table id="privesc-findings-table">
+        <thead>
+            <tr><th>Technique</th><th>Principal</th><th>Description</th></tr>
+        </thead>
+        <tbody><tr><td colspan="3" class="loading">Loading...</td></tr></tbody>
+    </table>
+
+    <script>
+        async function loadScan(url) {
+            const res = await fetch(url);
+            const data = await res.json();
+            renderRuleFindings(data.rule_findings);
+            renderPrivescFindings(data.privesc_findings);
+        }
+
+        function renderRuleFindings(findings) {
+            const tbody = document.querySelector("#rule-findings-table tbody");
+            if (!findings.length) {
+                tbody.innerHTML = "<tr><td colspan='4'>No issues found.</td></tr>";
+                return;
+            }
+            tbody.innerHTML = findings.map(f => `
+                <tr>
+                    <td><span class="badge ${f.severity}">${f.severity}</span></td>
+                    <td>${f.rule_id}</td>
+                    <td>${f.policy_name}</td>
+                    <td>${f.message}</td>
+                </tr>
+            `).join("");
+        }
+
+        function renderPrivescFindings(findings) {
+            const tbody = document.querySelector("#privesc-findings-table tbody");
+            if (!findings.length) {
+                tbody.innerHTML = "<tr><td colspan='3'>No escalation paths found.</td></tr>";
+                return;
+            }
+            tbody.innerHTML = findings.map(f => `
+                <tr>
+                    <td>${f.technique_id}</td>
+                    <td>${f.principal}</td>
+                    <td>${f.description}</td>
+                </tr>
+            `).join("");
+        }
+
+        function refreshScan() {
+            document.querySelectorAll("tbody").forEach(tb => tb.innerHTML = "<tr><td class='loading'>Scanning...</td></tr>");
+            loadScan("/api/scan/refresh");
+        }
+
+        loadScan("/api/scan");
+    </script>
+</body>
+</html>
