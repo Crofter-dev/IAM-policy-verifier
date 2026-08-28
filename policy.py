@@ -82,3 +82,40 @@ def normalize(policy_document:dict):
     if isinstance(statements, dict):
         statements = [statements]
     return statements
+
+def get_principal_arns(profile: str = None):
+    session = boto3.Session(profile_name=profile) if profile else boto3.Session()
+    iam = session.client("iam")
+
+    principal_arns = {}
+
+    user_paginator = iam.get_paginator("list_users")
+    for page in user_paginator.paginate():
+        for user in page.get("Users", []):
+            principal_arns[user["UserName"]] = user["Arn"]
+
+    role_paginator = iam.get_paginator("list_roles")
+    for page in role_paginator.paginate():
+        for role in page.get("Roles", []):
+            principal_arns[role["RoleName"]] = role["Arn"]
+
+    return principal_arns
+
+def load_policies_from_aws(profile: str = None):
+    session = boto3.Session(profile_name=profile) if profile else boto3.Session()
+    iam = session.client("iam")
+
+    policies = []
+    paginator = iam.get_paginator("get_account_authorization_details")
+
+    for page in paginator.paginate(Filter=["LocalManagedPolicy", "AWSManagedPolicy"]):
+        for policy in page.get("Policies", []):
+            default_version_id = policy["DefaultVersionId"]
+            for version in policy.get("PolicyVersionList", []):
+                if version["VersionId"] == default_version_id:
+                    policies.append({
+                        "PolicyName": policy["PolicyName"],
+                        "Arn": policy["Arn"],
+                        "Document": version["Document"],
+                    })
+    return policies
