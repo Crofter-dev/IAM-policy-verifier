@@ -104,5 +104,3 @@ pip install boto3 flask
 - [x] Unused permission detection (Access Advisor)
 - [x] Flask dashboard
 - [x] MITRE ATT&CK mapping
-- [ ] Deduplicate wildcard-driven privesc findings into a single "full admin" finding
-- [ ] Parallelize Access Advisor job polling for large accounts
